@@ -21,12 +21,12 @@ library(htmlwidgets)
 library(quarto)
 library(rmarkdown)
 
-full <- read_excel("data/bds_data.xlsx", sheet = "BDS")
-patents <- read_excel("data/bds_data.xlsx", sheet = "Patents")
-stem_edu <- read_excel("data/S&EDegrees2000-2018.xlsx")
-employment_growth <- read_excel("data/bds_data.xlsx", sheet = "Total Employment Growth")
-sector_growth <- read_excel("data/bds_data.xlsx", sheet = "Info Employment Growth")
-vc <- read_excel("data/Wide Data Set.xlsx", sheet = "VC #", skip = 1)
+full <- read_excel("bds_data.xlsx", sheet = "BDS")
+patents <- read_excel("bds_data.xlsx", sheet = "Patents")
+stem_edu <- read_excel("S&EDegrees2000-2018.xlsx")
+employment_growth <- read_excel("bds_data.xlsx", sheet = "Total Employment Growth")
+sector_growth <- read_excel("bds_data.xlsx", sheet = "Info Employment Growth")
+vc <- read_excel("Wide Data Set.xlsx", sheet = "VC #", skip = 1)
 ```
 
 ## Make datasets long
@@ -86,8 +86,6 @@ full <- full |>
   left_join(employment_growth, join_by(State, Year)) |>
   left_join(sector_growth, join_by(State, Year))
 
-write_xlsx(full, "data/full_dataset.xlsx")
-
 full <- full |>
   mutate(State = factor(State),
          "Information Employment Proportion" = `Information Sector`/`Total Employment`)
@@ -105,7 +103,8 @@ variables <- c("Total Employment", "Information Sector", "Net Job Creation",
                "Number of Firms Receiving VC",
                "Total Employment Growth From Year Prior",
                "Information Employment Growth From Year Prior",
-               "Information Employment Proportion")
+               "Information Employment Proportion",
+               "Number of Firms")
 
 ```
 
