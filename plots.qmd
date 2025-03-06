@@ -140,8 +140,6 @@ suppressWarnings(for (v in variables) {
 
   # Print the interactive plot (this will display each one)
   print(interactive_plot)
-  plot_filename <- paste0("interactive_plot_", v, ".html")
-  save_html(interactive_plot, plot_filename)
 })
 
 ```
