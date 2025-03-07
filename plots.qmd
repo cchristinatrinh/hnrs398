@@ -27,6 +27,7 @@ stem_edu <- read_excel("S&EDegrees2000-2018.xlsx")
 employment_growth <- read_excel("bds_data.xlsx", sheet = "Total Employment Growth")
 sector_growth <- read_excel("bds_data.xlsx", sheet = "Info Employment Growth")
 vc <- read_excel("Wide Data Set.xlsx", sheet = "VC #", skip = 1)
+edu_funding <- read_excel("SHEEO_SHEF_FY23_Report_Data_Revised.xlsx", sheet = "Report Data")
 ```
 
 ## Make datasets long
@@ -52,6 +53,11 @@ employment_growth <- employment_growth |>
 sector_growth <- sector_growth |>
   pivot_longer(cols = 2:26, values_to = "Information Employment Growth From Year Prior", names_to = "Year") |>
   mutate(Year = as.numeric(Year))
+
+edu_funding <- edu_funding |>
+  select("Total State and Local Support Excluding Federal Stimulus", State, FY) |>
+  filter(FY %in% 1999:2023) |>
+  rename(Year = FY)
 ```
 
 ## Clean S&E Dataset and Fix Formatting
@@ -84,7 +90,8 @@ full <- full |>
   left_join(se_degree_proportion, join_by(State, Year)) |>
   left_join(vc, join_by(State, Year)) |>
   left_join(employment_growth, join_by(State, Year)) |>
-  left_join(sector_growth, join_by(State, Year))
+  left_join(sector_growth, join_by(State, Year)) |>
+  left_join(edu_funding, join_by(State, Year))
 
 full <- full |>
   mutate(State = factor(State),
@@ -104,7 +111,8 @@ variables <- c("Total Employment", "Information Sector", "Net Job Creation",
                "Total Employment Growth From Year Prior",
                "Information Employment Growth From Year Prior",
                "Information Employment Proportion",
-               "Number of Firms")
+               "Number of Firms", 
+               "Total State and Local Support Excluding Federal Stimulus")
 
 ```
 
