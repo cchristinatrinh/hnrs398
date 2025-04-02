@@ -20,3 +20,33 @@ bach_degrees <- read_excel("data/final_sheet.xlsx", sheet = "bach_degrees")
 
 
 ```
+
+```{r}
+patents <- patents |>
+  pivot_longer(cols = 2:26, values_to = "patents", names_to = "year") |>
+  mutate(year = as.numeric(year))
+
+venture_capital <- venture_capital |>
+  pivot_longer(cols = 2:21, values_to = "venture_capital", names_to = "year") |>
+  mutate(year = as.numeric(year))
+
+bach_degrees <- bach_degrees |>
+  pivot_longer(cols = 2:26, values_to = "bach_degrees", names_to = "year") |>
+  mutate(year = as.numeric(year))
+
+```
+
+```{r}
+full_v1 <- venture_capital |>
+  left_join(patents, join_by(state, year)) |>
+  left_join(firm_deaths, join_by(state, year)) |>
+  left_join(bach_degrees, join_by(state, year)) |>
+  left_join(net_jobs, join_by(state, year)) |>
+  left_join(edu_investment, join_by(state, year)) |>
+  left_join(info_net_jobs, join_by(state, year))
+```
+
+```{r}
+full_v1 |>
+  filter(year %in% c(1996,1997,1998,1999,2000,2001))
+```
