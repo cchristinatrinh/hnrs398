@@ -47,6 +47,9 @@ full_v1 <- venture_capital |>
 ```
 
 ```{r}
-full_v1 |>
-  filter(year %in% c(1996,1997,1998,1999,2000,2001))
+full_v2 <- full_v1 |>
+  filter(year %in% c(1996,1997,1998,1999,2000,2001,
+                     2010,2011,2012,2013,2014,2015))
+
+write_xlsx(full_v2, path = "data/spreadsheet.xlsx")
 ```
