@@ -1,0 +1,22 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(writexl)
+
+net_jobs <- read_excel("data/final_sheet.xlsx", sheet = "net_jobs")
+info_net_jobs <- read_excel("data/final_sheet.xlsx", sheet = "info_net_jobs")
+firm_deaths <- read_excel("data/final_sheet.xlsx", sheet = "firm_deaths")
+
+patents <- read_excel("data/final_sheet.xlsx", sheet = "patents")
+venture_capital <- read_excel("data/final_sheet.xlsx", sheet = "venture_capital")
+edu_investment <- read_excel("data/final_sheet.xlsx", sheet = "edu_investment")
+bach_degrees <- read_excel("data/final_sheet.xlsx", sheet = "bach_degrees")
+
+
+```
