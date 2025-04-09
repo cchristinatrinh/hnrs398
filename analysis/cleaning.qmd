@@ -5,6 +5,12 @@ format: html
 editor: visual
 ---
 
+# Analysis
+
+# Data Cleaning
+
+## Load Assets
+
 ```{r}
 library(tidyverse)
 library(readxl)
@@ -13,6 +19,7 @@ library(ggiraph)
 
 net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "net_jobs")
 info_net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "info_net_jobs")
+employment <- read_excel("../data/all_variables_data.xlsx", sheet = "employment")
 firm_deaths <- read_excel("../data/all_variables_data.xlsx", sheet = "firm_deaths")
 
 patents <- read_excel("../data/all_variables_data.xlsx", sheet = "patents")
@@ -23,13 +30,10 @@ bach_degrees <- read_excel("../data/all_variables_data.xlsx", sheet = "bach_degr
 gdp <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp")
 gdp_per_capita <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp_per_capita")
 population <- read_excel("../data/all_variables_data.xlsx", sheet = "population")
-employment <- read_excel("../data/all_variables_data.xlsx", sheet = "employment")
-
-
-
-
 
 ```
+
+## Reformat Tibbles
 
 ```{r}
 patents <- patents |>
@@ -57,7 +61,10 @@ population <- population |>
   mutate(year = as.numeric(year))
 ```
 
+## Join Data Tables
+
 ```{r}
+#dataset including all variables for all years 1996-2020
 full_v1 <- venture_capital |>
   left_join(patents, join_by(state, year)) |>
   left_join(firm_deaths, join_by(state, year)) |>
@@ -72,10 +79,10 @@ full_v1 <- venture_capital |>
 ```
 
 ```{r}
+#dataset including all variables for only the endpoint years
 full_v2 <- full_v1 |>
   filter(year %in% c(1996,2001,2010,2015))
 
-write_xlsx(full_v2, path = "../data/full_sheet.xlsx")
 
 era1 <- full_v1 |>
   filter(year %in% c(1996,2001))
@@ -99,6 +106,7 @@ era2_wide <- era2 |>
   select(-year, -variable) |>
   pivot_wider(names_from = variable_year, values_from = value)
 
+#dataset where each variable for each year is a column
 full_v3 <- full_v2 |>
   pivot_longer(cols = -c(state, year),  # Keep state and year, pivot the rest
                names_to = "variable", 
@@ -106,6 +114,14 @@ full_v3 <- full_v2 |>
   mutate(variable_year = paste0(variable, "_", year)) |>
   select(-year, -variable) |>
   pivot_wider(names_from = variable_year, values_from = value)
+
+
+```
+
+## Create Excel Spreadsheets
+
+```{r}
+write_xlsx(full_v2, path = "../data/full_sheet.xlsx")
 
 write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
 
@@ -117,15 +133,11 @@ write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
 
 ```{r}
 
-variables <- c("Total Employment", "Information Sector", "Net Job Creation", 
-               "Establishment Births", "Establishment, Firm Deaths", 
-               "Number of Utility Patents", "Proportion of S&E", 
-               "Number of Firms Receiving VC",
-               "Total Employment Growth From Year Prior",
-               "Information Employment Growth From Year Prior",
-               "Information Employment Proportion",
-               "Number of Firms", 
-               "Total State and Local Support Excluding Federal Stimulus")
+variables <- c("venture_capital", "patents", "firm_deaths", "bach_degrees",
+               "net_jobs", "edu_investment", "info_net_jobs", "employment",
+               "gdp", "gdp_per_capita", "population")
+
+df <- full_v1
 
 ```
 
@@ -133,19 +145,19 @@ variables <- c("Total Employment", "Information Sector", "Net Job Creation",
 suppressWarnings(for (v in variables) {
   
   # Check if the variable has only positive values (ignoring NAs)
-  has_positive_values <- all(full[[v]] >= 0, na.rm = TRUE)
+  has_positive_values <- all(df[[v]] >= 0, na.rm = TRUE)
   
   # Build the base plot
-  plot <- ggplot(full, aes(
-    x = Year,
+  plot <- ggplot(df, aes(
+    x = year,
     y = .data[[v]],  # Dynamically selecting the variable
-    color = State,
-    group = State,
-    tooltip = State,
-    data_id = State
+    color = state,
+    group = state,
+    tooltip = state,
+    data_id = state
   )) +
-    geom_line_interactive(aes(group = State), linewidth = 0.7) + 
-    labs(title = paste(v, "Across States Over Time"),
+    geom_line_interactive(aes(group = state), linewidth = 0.7) + 
+    labs(title = paste(v, "Across states Over Time"),
          x = "Year",
          y = v) +
     theme_minimal() +
