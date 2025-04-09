@@ -1,5 +1,6 @@
 ---
-title: "Untitled"
+title: "Data Analysis"
+author: Christina Trinh
 format: html
 editor: visual
 ---
@@ -10,19 +11,19 @@ library(readxl)
 library(writexl)
 library(ggiraph)
 
-net_jobs <- read_excel("data/all_variables_data.xlsx", sheet = "net_jobs")
-info_net_jobs <- read_excel("data/all_variables_data.xlsx", sheet = "info_net_jobs")
-firm_deaths <- read_excel("data/all_variables_data.xlsx", sheet = "firm_deaths")
+net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "net_jobs")
+info_net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "info_net_jobs")
+firm_deaths <- read_excel("../data/all_variables_data.xlsx", sheet = "firm_deaths")
 
-patents <- read_excel("data/all_variables_data.xlsx", sheet = "patents")
-venture_capital <- read_excel("data/all_variables_data.xlsx", sheet = "venture_capital")
-edu_investment <- read_excel("data/all_variables_data.xlsx", sheet = "edu_investment")
-bach_degrees <- read_excel("data/all_variables_data.xlsx", sheet = "bach_degrees")
+patents <- read_excel("../data/all_variables_data.xlsx", sheet = "patents")
+venture_capital <- read_excel("../data/all_variables_data.xlsx", sheet = "venture_capital")
+edu_investment <- read_excel("../data/all_variables_data.xlsx", sheet = "edu_investment")
+bach_degrees <- read_excel("../data/all_variables_data.xlsx", sheet = "bach_degrees")
 
-gdp <- read_excel("data/all_variables_data.xlsx", sheet = "gdp")
-gdp_per_capita <- read_excel("data/all_variables_data.xlsx", sheet = "gdp_per_capita")
-population <- read_excel("data/all_variables_data.xlsx", sheet = "population")
-employment <- read_excel("data/all_variables_data.xlsx", sheet = "employment")
+gdp <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp")
+gdp_per_capita <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp_per_capita")
+population <- read_excel("../data/all_variables_data.xlsx", sheet = "population")
+employment <- read_excel("../data/all_variables_data.xlsx", sheet = "employment")
 
 
 
@@ -74,7 +75,7 @@ full_v1 <- venture_capital |>
 full_v2 <- full_v1 |>
   filter(year %in% c(1996,2001,2010,2015))
 
-write_xlsx(full_v2, path = "data/spreadsheet.xlsx")
+write_xlsx(full_v2, path = "../data/full_sheet.xlsx")
 
 era1 <- full_v1 |>
   filter(year %in% c(1996,2001))
@@ -98,7 +99,7 @@ era2_wide <- era2 |>
   select(-year, -variable) |>
   pivot_wider(names_from = variable_year, values_from = value)
 
-full <- full_v2 |>
+full_v3 <- full_v2 |>
   pivot_longer(cols = -c(state, year),  # Keep state and year, pivot the rest
                names_to = "variable", 
                values_to = "value") |>
@@ -106,7 +107,7 @@ full <- full_v2 |>
   select(-year, -variable) |>
   pivot_wider(names_from = variable_year, values_from = value)
 
-write_xlsx(full, path = "data/full.xlsx")
+write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
 
 ```
 
