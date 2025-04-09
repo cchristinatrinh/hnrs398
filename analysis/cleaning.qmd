@@ -8,20 +8,21 @@ editor: visual
 library(tidyverse)
 library(readxl)
 library(writexl)
+library(ggiraph)
 
-net_jobs <- read_excel("data/final_sheet.xlsx", sheet = "net_jobs")
-info_net_jobs <- read_excel("data/final_sheet.xlsx", sheet = "info_net_jobs")
-firm_deaths <- read_excel("data/final_sheet.xlsx", sheet = "firm_deaths")
+net_jobs <- read_excel("data/all_variables_data.xlsx", sheet = "net_jobs")
+info_net_jobs <- read_excel("data/all_variables_data.xlsx", sheet = "info_net_jobs")
+firm_deaths <- read_excel("data/all_variables_data.xlsx", sheet = "firm_deaths")
 
-patents <- read_excel("data/final_sheet.xlsx", sheet = "patents")
-venture_capital <- read_excel("data/final_sheet.xlsx", sheet = "venture_capital")
-edu_investment <- read_excel("data/final_sheet.xlsx", sheet = "edu_investment")
-bach_degrees <- read_excel("data/final_sheet.xlsx", sheet = "bach_degrees")
+patents <- read_excel("data/all_variables_data.xlsx", sheet = "patents")
+venture_capital <- read_excel("data/all_variables_data.xlsx", sheet = "venture_capital")
+edu_investment <- read_excel("data/all_variables_data.xlsx", sheet = "edu_investment")
+bach_degrees <- read_excel("data/all_variables_data.xlsx", sheet = "bach_degrees")
 
-gdp <- read_excel("data/final_sheet.xlsx", sheet = "gdp")
-gdp_per_capita <- read_excel("data/final_sheet.xlsx", sheet = "gdp_per_capita")
-population <- read_excel("data/final_sheet.xlsx", sheet = "population")
-employment <- read_excel("data/final_sheet.xlsx", sheet = "employment")
+gdp <- read_excel("data/all_variables_data.xlsx", sheet = "gdp")
+gdp_per_capita <- read_excel("data/all_variables_data.xlsx", sheet = "gdp_per_capita")
+population <- read_excel("data/all_variables_data.xlsx", sheet = "population")
+employment <- read_excel("data/all_variables_data.xlsx", sheet = "employment")
 
 
 
@@ -106,5 +107,59 @@ full <- full_v2 |>
   pivot_wider(names_from = variable_year, values_from = value)
 
 write_xlsx(full, path = "data/full.xlsx")
+
+```
+
+# Plots
+
+## Separate plots for each variable trend over time, with separate lines for every state
+
+```{r}
+
+variables <- c("Total Employment", "Information Sector", "Net Job Creation", 
+               "Establishment Births", "Establishment, Firm Deaths", 
+               "Number of Utility Patents", "Proportion of S&E", 
+               "Number of Firms Receiving VC",
+               "Total Employment Growth From Year Prior",
+               "Information Employment Growth From Year Prior",
+               "Information Employment Proportion",
+               "Number of Firms", 
+               "Total State and Local Support Excluding Federal Stimulus")
+
+```
+
+```{r}
+suppressWarnings(for (v in variables) {
+  
+  # Check if the variable has only positive values (ignoring NAs)
+  has_positive_values <- all(full[[v]] >= 0, na.rm = TRUE)
+  
+  # Build the base plot
+  plot <- ggplot(full, aes(
+    x = Year,
+    y = .data[[v]],  # Dynamically selecting the variable
+    color = State,
+    group = State,
+    tooltip = State,
+    data_id = State
+  )) +
+    geom_line_interactive(aes(group = State), linewidth = 0.7) + 
+    labs(title = paste(v, "Across States Over Time"),
+         x = "Year",
+         y = v) +
+    theme_minimal() +
+    theme(legend.position = "none")  # Fully removes legend
+
+  # Conditionally apply log scale to the y-axis if the variable has only positive values
+  if (has_positive_values) {
+    plot <- plot + scale_y_log10()  # Apply log transformation only if all values are positive
+  }
+  
+  # Generate interactive plot
+  interactive_plot <- girafe(ggobj = plot, width_svg = 7, height_svg = 4)
+
+  # Print the interactive plot (this will display each one)
+  print(interactive_plot)
+})
 
 ```
