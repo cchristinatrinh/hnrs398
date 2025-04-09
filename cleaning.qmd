@@ -18,6 +18,14 @@ venture_capital <- read_excel("data/final_sheet.xlsx", sheet = "venture_capital"
 edu_investment <- read_excel("data/final_sheet.xlsx", sheet = "edu_investment")
 bach_degrees <- read_excel("data/final_sheet.xlsx", sheet = "bach_degrees")
 
+gdp <- read_excel("data/final_sheet.xlsx", sheet = "gdp")
+gdp_per_capita <- read_excel("data/final_sheet.xlsx", sheet = "gdp_per_capita")
+population <- read_excel("data/final_sheet.xlsx", sheet = "population")
+employment <- read_excel("data/final_sheet.xlsx", sheet = "employment")
+
+
+
+
 
 ```
 
@@ -34,6 +42,17 @@ bach_degrees <- bach_degrees |>
   pivot_longer(cols = 2:26, values_to = "bach_degrees", names_to = "year") |>
   mutate(year = as.numeric(year))
 
+gdp <- gdp |>
+  pivot_longer(cols = 2:29, values_to = "gdp", names_to = "year") |>
+  mutate(year = as.numeric(year))
+
+gdp_per_capita <- gdp_per_capita |>
+  pivot_longer(cols = 2:5, values_to = "gdp_per_capita", names_to = "year") |>
+  mutate(year = as.numeric(year))
+
+population <- population |>
+  pivot_longer(cols = 2:5, values_to = "population", names_to = "year") |>
+  mutate(year = as.numeric(year))
 ```
 
 ```{r}
@@ -43,13 +62,49 @@ full_v1 <- venture_capital |>
   left_join(bach_degrees, join_by(state, year)) |>
   left_join(net_jobs, join_by(state, year)) |>
   left_join(edu_investment, join_by(state, year)) |>
-  left_join(info_net_jobs, join_by(state, year))
+  left_join(info_net_jobs, join_by(state, year)) |>
+  left_join(employment, join_by(state, year)) |>
+  left_join(gdp, join_by(state, year)) |>
+  left_join(gdp_per_capita, join_by(state, year)) |>
+  left_join(population, join_by(state, year))
 ```
 
 ```{r}
 full_v2 <- full_v1 |>
-  filter(year %in% c(1996,1997,1998,1999,2000,2001,
-                     2010,2011,2012,2013,2014,2015))
+  filter(year %in% c(1996,2001,2010,2015))
 
 write_xlsx(full_v2, path = "data/spreadsheet.xlsx")
+
+era1 <- full_v1 |>
+  filter(year %in% c(1996,2001))
+
+era2 <- full_v1 |>
+  filter(year %in% c(2010,2015))
+
+era1_wide <- era1 |>
+  pivot_longer(cols = -c(state, year),  # Keep state and year, pivot the rest
+               names_to = "variable", 
+               values_to = "value") |>
+  mutate(variable_year = paste0(variable, "_", year)) |>
+  select(-year, -variable) |>
+  pivot_wider(names_from = variable_year, values_from = value)
+
+era2_wide <- era2 |>
+  pivot_longer(cols = -c(state, year),  # Keep state and year, pivot the rest
+               names_to = "variable", 
+               values_to = "value") |>
+  mutate(variable_year = paste0(variable, "_", year)) |>
+  select(-year, -variable) |>
+  pivot_wider(names_from = variable_year, values_from = value)
+
+full <- full_v2 |>
+  pivot_longer(cols = -c(state, year),  # Keep state and year, pivot the rest
+               names_to = "variable", 
+               values_to = "value") |>
+  mutate(variable_year = paste0(variable, "_", year)) |>
+  select(-year, -variable) |>
+  pivot_wider(names_from = variable_year, values_from = value)
+
+write_xlsx(full, path = "data/full.xlsx")
+
 ```

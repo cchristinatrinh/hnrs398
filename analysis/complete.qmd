@@ -1,0 +1,182 @@
+---
+title: "complete"
+format: html
+editor: visual
+---
+
+# Data Cleaning
+
+## Load Assets
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(ggiraph)
+
+full <- read_excel("data/bds_data.xlsx", sheet = "BDS")
+patents <- read_excel("data/bds_data.xlsx", sheet = "Patents")
+stem_edu <- read_excel("data/S&EDegrees2000-2018.xlsx")
+employment_growth <- read_excel("data/bds_data.xlsx", sheet = "Copy of Total Employment Growth")
+sector_growth <- read_excel("data/bds_data.xlsx", sheet = "Info Employment Growth")
+vc <- read_excel("data/Wide Data Set.xlsx", sheet = "VC #", skip = 1)
+```
+
+## Make datasets long
+
+```{r}
+patents <- patents |>
+  pivot_longer(cols = 2:27, values_to = "Number of Utility Patents", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+
+stem_edu <- stem_edu |>
+  head(51) |>
+  pivot_longer(cols = 2:59, values_to = "Number", names_to = "Year") |>
+  mutate(Number = as.numeric(Number))
+
+vc <- vc |>
+  pivot_longer(cols = 2:27, values_to = "Number of Firms Receiving VC", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+
+```
+
+## Clean S&E Dataset and Fix Formatting
+
+```{r}
+se_degrees <- stem_edu |>
+  filter(str_detect(Year, "conferred")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  rename("S&E Degrees" = Number)
+
+total_degrees <- stem_edu |>
+  filter(str_detect(Year, "All higher")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  rename("Total Degrees" = Number)
+
+se_degree_proportion <- stem_edu  |>
+  filter(str_detect(Year, "All S&E")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  distinct() |>
+  rename("Proportion of S&E" = Number)
+```
+
+## Full, long dataset of all the variables of every state in every year
+
+```{r}
+full <- full |>
+  left_join(patents, join_by(State, Year)) |>
+  left_join(se_degrees, join_by(State, Year)) |>
+  left_join(total_degrees, join_by(State, Year)) |>
+  left_join(se_degree_proportion, join_by(State, Year)) |>
+  left_join(vc, join_by(State, Year))
+
+write_xlsx(full, "data/full_dataset.xlsx")
+
+full <- full |>
+  mutate(State = factor(State))
+```
+
+# Plots
+
+## Separate plots for every year of states vs selected variable
+
+```{r}
+
+years <- unique(full$Year)
+
+for (y in years) {
+  full_filtered <- full |>
+    filter(Year == y)
+  
+ full_filtered$State <- fct_reorder(full_filtered$State, full_filtered$`Total Employment`)
+
+  plot <- ggplot(full_filtered, aes(x = State, y = `Total Employment`)) +
+    geom_jitter() +
+    labs(title = paste("Employment by State in", y),
+         x = "State",
+         y = "Employment") +
+    theme_minimal() +
+    coord_flip()  # Optional for readability
+  
+  print(plot) 
+}
+```
+
+## Separate plots for each variable (summarized over time) across states
+
+```{r}
+
+#summary plot
+
+full_summary <- full |>
+  group_by(State) |>
+  summarise(employment = mean(`Total Employment`, na.rm = TRUE), 
+            sector_employment = mean(`Information Sector`, na.rm = TRUE),
+            jobs = mean(`Net Job Creation`, na.rm = TRUE),
+            firms = mean(`Number of Firms`, na.rm = TRUE),
+            establishments = mean(`Number of Firms`, na.rm = TRUE),
+            births = mean(`Establishment Births`, na.rm = TRUE),
+            deaths = mean(`Establishment, Firm Deaths`, na.rm = TRUE),
+            patents = mean(`Number of Utility Patents`, na.rm = TRUE),
+            se = mean(`Proportion of S&E`, na.rm = TRUE),
+            investments = mean(`Number of Firms Receiving VC`, na.rm = TRUE))
+
+
+summary_variables <- c("employment", "sector_employment", "jobs", "firms", 
+               "establishments", "births", "deaths", "patents", "se", "investments")
+
+for (v in summary_variables) {
+  summary_filtered <- full_summary |>
+    select(State, all_of(v))  # Use all_of to ensure correct variable selection
+
+  # Reorder State by the values of the variable v from least to most
+  summary_filtered$State <- fct_reorder(summary_filtered$State, summary_filtered[[v]])
+
+  plot <- ggplot(summary_filtered, aes(x = State, y = .data[[v]])) +
+    geom_jitter() +
+    labs(title = paste(v, "by State Across Years"),
+         x = "State",
+         y = v) +
+    theme_minimal() +
+    coord_flip()  # Optional for readability
+  
+  print(plot)
+}
+```
+
+## Separate plots for each variable trend over time, with separate lines for every state
+
+```{r}
+variables <- c("Total Employment", "Information Sector", "Net Job Creation", 
+               "Establishment Births", "Establishment, Firm Deaths", 
+               "Number of Utility Patents", "Proportion of S&E", 
+               "Number of Firms Receiving VC")
+# Suppress warnings and iterate over variables
+suppressWarnings(for (v in variables) {
+  plot <- ggplot(full, aes(
+      x = Year,
+      y = .data[[v]],  # Dynamically selecting the variable
+      color = State,
+      group = State,
+      tooltip = State,
+      data_id = State
+    )) +
+    geom_jitter_interactive(alpha = 0.5, size = 1) +  # Reducing point size
+    geom_smooth(aes(group = State), se = FALSE, method = "loess", linewidth = 0.7) + 
+    labs(title = paste(v, "Across States Over Time"),
+         x = "Year",
+         y = v) +
+    scale_y_log10() +
+    theme_minimal() +
+    theme(legend.position = "none")  # Fully removes legend
+
+  # Generate interactive plot
+  interactive_plot <- girafe(ggobj = plot, width_svg = 7, height_svg = 4)
+  
+  # Print the interactive plot (this will display each one)
+  print(interactive_plot)
+})
+
+```
+
+\

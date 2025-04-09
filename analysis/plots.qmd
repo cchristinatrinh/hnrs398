@@ -1,0 +1,148 @@
+---
+title: "plots"
+author: "Christina Trinh"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+---
+
+# Data Cleaning
+
+## Load Assets
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(writexl)
+library(ggiraph)
+library(htmltools)
+library(htmlwidgets)
+library(quarto)
+library(rmarkdown)
+
+full <- read_excel("data/bds_data.xlsx", sheet = "BDS")
+patents <- read_excel("data/bds_data.xlsx", sheet = "Patents")
+stem_edu <- read_excel("data/S&EDegrees2000-2018.xlsx")
+employment_growth <- read_excel("data/bds_data.xlsx", sheet = "Total Employment Growth")
+sector_growth <- read_excel("data/bds_data.xlsx", sheet = "Info Employment Growth")
+vc <- read_excel("data/Wide Data Set.xlsx", sheet = "VC #", skip = 1)
+```
+
+## Make datasets long
+
+```{r}
+patents <- patents |>
+  pivot_longer(cols = 2:27, values_to = "Number of Utility Patents", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+
+stem_edu <- stem_edu |>
+  head(51) |>
+  pivot_longer(cols = 2:59, values_to = "Number", names_to = "Year") |>
+  mutate(Number = as.numeric(Number))
+
+vc <- vc |>
+  pivot_longer(cols = 2:27, values_to = "Number of Firms Receiving VC", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+
+employment_growth <- employment_growth |>
+  pivot_longer(cols = 2:26, values_to = "Total Employment Growth From Year Prior", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+
+sector_growth <- sector_growth |>
+  pivot_longer(cols = 2:26, values_to = "Information Employment Growth From Year Prior", names_to = "Year") |>
+  mutate(Year = as.numeric(Year))
+```
+
+## Clean S&E Dataset and Fix Formatting
+
+```{r}
+se_degrees <- stem_edu |>
+  filter(str_detect(Year, "conferred")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  rename("S&E Degrees" = Number)
+
+total_degrees <- stem_edu |>
+  filter(str_detect(Year, "All higher")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  rename("Total Degrees" = Number)
+
+se_degree_proportion <- stem_edu  |>
+  filter(str_detect(Year, "All S&E")) |>
+  mutate(Year = str_sub(Year, 1, 4), Year = as.numeric(Year)) |>
+  distinct() |>
+  rename("Proportion of S&E" = Number)
+```
+
+## Full, long dataset of all the variables of every state in every year
+
+```{r}
+full <- full |>
+  left_join(patents, join_by(State, Year)) |>
+  left_join(se_degrees, join_by(State, Year)) |>
+  left_join(total_degrees, join_by(State, Year)) |>
+  left_join(se_degree_proportion, join_by(State, Year)) |>
+  left_join(vc, join_by(State, Year)) |>
+  left_join(employment_growth, join_by(State, Year)) |>
+  left_join(sector_growth, join_by(State, Year))
+
+write_xlsx(full, "data/full_dataset.xlsx")
+
+full <- full |>
+  mutate(State = factor(State),
+         "Information Employment Proportion" = `Information Sector`/`Total Employment`)
+```
+
+# Plots
+
+## Separate plots for each variable trend over time, with separate lines for every state
+
+```{r}
+
+variables <- c("Total Employment", "Information Sector", "Net Job Creation", 
+               "Establishment Births", "Establishment, Firm Deaths", 
+               "Number of Utility Patents", "Proportion of S&E", 
+               "Number of Firms Receiving VC",
+               "Total Employment Growth From Year Prior",
+               "Information Employment Growth From Year Prior",
+               "Information Employment Proportion")
+
+```
+
+```{r}
+suppressWarnings(for (v in variables) {
+  
+  # Check if the variable has only positive values (ignoring NAs)
+  has_positive_values <- all(full[[v]] >= 0, na.rm = TRUE)
+  
+  # Build the base plot
+  plot <- ggplot(full, aes(
+    x = Year,
+    y = .data[[v]],  # Dynamically selecting the variable
+    color = State,
+    group = State,
+    tooltip = State,
+    data_id = State
+  )) +
+    geom_line_interactive(aes(group = State), linewidth = 0.7) + 
+    labs(title = paste(v, "Across States Over Time"),
+         x = "Year",
+         y = v) +
+    theme_minimal() +
+    theme(legend.position = "none")  # Fully removes legend
+
+  # Conditionally apply log scale to the y-axis if the variable has only positive values
+  if (has_positive_values) {
+    plot <- plot + scale_y_log10()  # Apply log transformation only if all values are positive
+  }
+  
+  # Generate interactive plot
+  interactive_plot <- girafe(ggobj = plot, width_svg = 7, height_svg = 4)
+
+  # Print the interactive plot (this will display each one)
+  print(interactive_plot)
+  plot_filename <- paste0("interactive_plot_", v, ".html")
+  save_html(interactive_plot, plot_filename)
+})
+
+```
