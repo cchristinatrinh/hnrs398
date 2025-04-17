@@ -89,3 +89,70 @@ summary(era1_info_net_jobs)
 summary(era1_firm_death)
 summary(era1_employment)
 ```
+
+```{r}
+pc_era_1_negative <- pc_era_1 |>
+  filter(info_net_jobs_pc < 0)
+
+summary(lm(info_net_jobs_pc~edu_investment_pc, 
+                    data  =pc_era_1_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
+                    data = pc_era_1_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_1_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_1_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
+                    data = pc_era_1_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
+                    data = pc_era_1_negative, na.rm=TRUE))
+
+```
+
+```{r}
+pc_era_2_negative <- pc_era_2 |>
+  filter(info_net_jobs_pc < 0)
+
+summary(lm(info_net_jobs_pc~edu_investment_pc, 
+                    data  =pc_era_2_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
+                    data = pc_era_2_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_2_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_2_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
+                    data = pc_era_2_negative, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
+                    data = pc_era_2_negative, na.rm=TRUE))
+```
+
+```{r}
+summary(lm(info_net_jobs_pc~edu_investment_pc, 
+                    data  =pc_era_1, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
+                    data = pc_era_1, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_1, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
+                    data = pc_era_1, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
+                    data = pc_era_1, na.rm=TRUE))
+
+summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
+                    data = pc_era_1, na.rm=TRUE))
+```
