@@ -1,0 +1,175 @@
+---
+title: "honors_models"
+author: "Ava Braiter"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Load in Packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(mosaic)
+library(car)
+library(stats)
+library(ggplot2)
+library(GGally)
+
+```
+
+#ERA 1
+
+### Load in Data
+
+```{r}
+era_1 <- read_xlsx("era1.xlsx")
+era_1 <- era_1 %>% 
+  slice(1:51)
+
+info_employment <- read_xlsx("info_employment.xlsx")
+info_employment <- info_employment %>% 
+  select(State, info_employment_1996, info_employment_2001)
+
+era_1 <- cbind(era_1, info_employment)
+
+```
+
+### Make Percent Change Variables
+
+```{r}
+pc_1 <- era_1 %>% 
+  mutate(vc_pc=(venture_capital_2001-venture_capital_1996)/venture_capital_1996,
+         patents_pc=((patents_2001-patents_1996)/patents_1996),
+         firm_death_pc=((firm_deaths_2001-firm_deaths_1996)/firm_deaths_1996),
+         bach_degrees_pc=(bach_degrees_2001-bach_degrees_1996)/bach_degrees_1996,
+         net_jobs_pc=(net_jobs_2001-net_jobs_1996)/net_jobs_1996,
+         edu_investment_pc=(edu_investment_2001-edu_investment_1996)/edu_investment_1996,
+         info_net_jobs_pc=(info_net_jobs_2001-info_net_jobs_1996)/info_net_jobs_1996,
+         employment_pc=(employment_2001-employment_1996)/employment_1996,
+         gdp_pc=(gdp_2001-gdp_1996)/gdp_1996,
+         gdp_per_capita_pc=(gdp_per_capita_2001-gdp_per_capita_1996)/gdp_per_capita_1996,
+         population_pc=(population_2001-population_1996)/population_1996,
+         info_employment_pc=(info_employment_2001-info_employment_1996)/info_employment_1996)
+
+pc_1 <- pc_1 %>% 
+  select(state, info_employment_2001, vc_pc, patents_pc, firm_death_pc, bach_degrees_pc, net_jobs_pc, edu_investment_pc, info_net_jobs_pc, employment_pc, gdp_pc, gdp_per_capita_pc, population_pc, info_employment_pc)
+
+#make inf and NaN into NA 
+pc_1 <- pc_1 %>% 
+  mutate_all(~ifelse(is.nan(.), NA, .))
+pc_1[sapply(pc_1, is.infinite)] <- NA
+
+```
+
+#Tech Region Models
+
+Selected 25 states with the most information sector employment in 2001 for high df
+
+For high tech regions, Illinois, Virginia, and North Carolina were removed because they were extreme outliers for venture capital percent change.
+
+```{r}
+
+pc_1_high <- pc_1 %>% 
+  arrange(desc(info_employment_2001))
+pc_1_high <- pc_1_high %>% 
+  slice(c(1:4, 6, 8:15, 17:25))
+
+pc_1_low <- pc_1 %>% 
+  arrange(desc(info_employment_2001)) %>% 
+  slice(26:51)
+pc_1_low_no <- pc_1_low %>% 
+  slice(c(1:9, 12:15, 17, 19:26))
+
+```
+
+##High Tech
+
+Dependent Variable: information sector employment
+
+###Correlation plots
+
+```{r, warnings=FALSE}
+#high tech areas
+ggpairs(pc_1_high, columns=c("edu_investment_pc", "vc_pc", "bach_degrees_pc", "gdp_pc", "patents_pc", "firm_death_pc", "info_employment_pc"))
+
+```
+
+###Education Investment
+
+```{r, warning=FALSE}
+educ.high.fit.1a <- lm(info_employment_pc~edu_investment_pc, data=pc_1_high, na.rm=TRUE)
+summary(educ.high.fit.1a)
+
+educ.high.fit.1b <- lm(info_employment_pc~edu_investment_pc+gdp_pc, data=pc_1_high, na.rm=TRUE)
+summary(educ.high.fit.1b)
+
+educ.high.fit.1c <- lm(info_employment_pc~edu_investment_pc+gdp_pc+patents_pc, data=pc_1_high, na.rm=TRUE)
+summary(educ.high.fit.1c)
+
+educ.high.fit.1d <- lm(info_employment_pc~edu_investment_pc+bach_degrees_pc, data=pc_1_high, na.rm=TRUE)
+summary(educ.high.fit.1d)
+```
+
+###Patents
+
+```{r, warning=FALSE}
+patents.high.fit.1a <- lm(info_employment_pc~patents_pc, data=pc_1_high, na.rm=TRUE)
+summary(patents.high.fit.1a)
+
+patents.high.fit.1b <- lm(info_employment_pc~patents_pc+edu_investment_pc, data=pc_1_high, na.rm=TRUE)
+summary(patents.high.fit.1b)
+
+patents.high.fit.1c <- lm(info_employment_pc~patents_pc+edu_investment_pc+bach_degrees_pc, data=pc_1_high, na.rm=TRUE)
+summary(patents.high.fit.1c)
+```
+
+### Venture Capital
+
+```{r, warning=FALSE}
+vc.high.fit.1a <- lm(info_employment_pc~vc_pc, data=pc_1_high, na.rm=TRUE)
+summary(vc.high.fit.1a)
+
+vc.high.fit.1b <- lm(info_employment_pc~vc_pc+edu_investment_pc, data=pc_1_high, na.rm=TRUE)
+summary(vc.high.fit.1b)
+
+vc.high.fit.1c <- lm(info_employment_pc~vc_pc+edu_investment_pc+gdp_pc, data=pc_1_high, na.rm=TRUE)
+summary(vc.high.fit.1c)
+
+vc.high.fit.1d <- lm(info_employment_pc~vc_pc+patents_pc, data=pc_1_high, na.rm=TRUE)
+summary(vc.high.fit.1d)
+
+```
+
+###Firm death
+```{r,warning=FALSE}
+fd.high.fit.1a <- lm(info_employment_pc~firm_death_pc, data=pc_1_high, na.rm=TRUE)
+summary(fd.high.fit.1a)
+
+fd.high.fit.1b <- lm(info_employment_pc~firm_death_pc+edu_investment_pc, data=pc_1_high, na.rm=TRUE)
+summary(fd.high.fit.1b)
+
+fd.high.fit.1c <- lm(info_employment_pc~firm_death_pc+edu_investment_pc+bach_degrees_pc, data=pc_1_high, na.rm=TRUE)
+summary(fd.high.fit.1c)
+
+fd.high.fit.1d <- lm(info_employment_pc~firm_death_pc+vc_pc, data=pc_1_high, na.rm=TRUE)
+summary(fd.high.fit.1d)
+
+fd.high.fit.1e <- lm(info_employment_pc~firm_death_pc+patents_pc, data=pc_1_high, na.rm=TRUE)
+summary(fd.high.fit.1e)
+
+
+```
+
+For states with a high amount of information sector employment, patents is the best predictor of information sector employment. Adding additional variables makes the model worse, however, the model is not incredibly strong to begin with (Adj. R-squared = .2747)
+
+##Low Tech
+
+```{r, warning=FALSE}
+ggpairs(pc_1_low_no, columns=c("edu_investment_pc", "vc_pc", "bach_degrees_pc", "gdp_pc", "patents_pc", "info_employment_pc"))
+```
+idk if running models are worth it since there's nothign significant here other than gdp
