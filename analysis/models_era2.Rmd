@@ -19,6 +19,7 @@ library(car)
 library(stats)
 library(ggplot2)
 library(GGally)
+library(leaps)
 
 ```
 
@@ -28,14 +29,6 @@ library(GGally)
 
 ```{r}
 era_2 <- read_xlsx("era2.xlsx")
-era_2 <- era_2 %>% 
-  slice(1:51)
-
-info_employment <- read_xlsx("info_employment.xlsx")
-info_employment <- info_employment %>% 
-  select(State, info_employment_2010, info_employment_2015)
-
-era_2 <- cbind(era_2, info_employment)
 
 ```
 
@@ -169,6 +162,28 @@ summary(fd.high.fit.2e)
 
 For states with a high amount of information sector employment, education investment is a decent predictor for information sector employment. The adjusted R-squared improved when gdp was held constant, however, the significance of the coefficient for education investment decreases but is still significant.
 
+```{r}
+#look at all models?
+best.model.subset <- regsubsets(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc, data=pc_2_high, method="exhaustive")
+all.models <- summary(best.model.subset)
+head(all.models)
+
+
+```
+best model by adj r2: bachelors degrees, education investment, and gdp
+however, this model has no statistically significant predictors
+
+```{r, warning=FALSE}
+best.r2 <- lm(info_employment_pc~edu_investment_pc+bach_degrees_pc+gdp_pc, data=pc_2_high, na.rm=TRUE)
+summary(best.r2)
+```
+another option: vc, patent, bach degree, edu investment, gdp
+
+```{r, warning=FALSE}
+best.r2 <- lm(info_employment_pc~edu_investment_pc+patents_pc+bach_degrees_pc+firm_death_pc+vc_pc+gdp_pc, data=pc_2_high)
+summary(best.r2)
+```
+
 ##Low Tech
 
 ```{r, warning=FALSE}
@@ -176,3 +191,64 @@ ggpairs(pc_2_low, columns=c("edu_investment_pc", "vc_pc", "bach_degrees_pc", "gd
 ```
 
 Not much correlation between the variables, so I think the conclusion is that a good predictor applies only for states with high information sector employment. Next steps, compare high info sector employment between the two eras and find models with significance that both have significance0.
+
+##All states
+
+```{r, warning=FALSE}
+ggpairs(pc_2, columns=c("vc_pc", "patents_pc", "firm_death_pc", "edu_investment_pc", "gdp_pc", "info_employment_pc"))
+
+```
+
+##remove outliers
+```{r,warning=FALSE}
+pc_2_1 <- pc_2 %>% 
+  slice(c(2, 4:13, 15:21, 23:29, 32, 36:46, 48:49, 51))
+ggpairs(pc_2_1, columns=c("vc_pc", "patents_pc", "firm_death_pc", "edu_investment_pc", "gdp_pc", "employment_pc", "info_employment_pc"))
+```
+
+###find best of all models
+```{r, warning=FALSE}
+best.model.subset <- regsubsets(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+employment_pc+gdp_pc, data=pc_2_1, method="exhaustive")
+all.models <- summary(best.model.subset)
+head(all.models)
+```
+
+###test for significance of models
+1: vc_pc (0.223)
+2: vc_pc+bach_degrees_pc (0.2455)
+3: vc_pc+firm_death_pc+bach_degrees_pc (0.2489)
+4: vc_pc+firm_death_pc+bach_degrees_pc+gdp_pc (0.2452)
+5: vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+gdp_pc (0.2239)
+6: vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc
+
+```{r, warning=FALSE}
+best.fit.1 <- lm(info_employment_pc~vc_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.1) 
+
+best.fit.2<- lm(info_employment_pc~vc_pc+bach_degrees_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.2)
+
+best.fit.3<- lm(info_employment_pc~vc_pc+firm_death_pc+bach_degrees_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.3)
+
+best.fit.4<- lm(info_employment_pc~vc_pc+firm_death_pc+bach_degrees_pc+gdp_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.4)
+
+best.fit.5<- lm(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+gdp_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.5)
+
+best.fit.6<- lm(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc, data=pc_2_1, na.rm=FALSE)
+summary(best.fit.6)
+```
+
+###test for best model
+
+```{r, warning=FALSE}
+anova(best.fit.1, best.fit.6)
+
+
+
+```
+
+first model is the best model according to anova. this one just has vc as explanatory variable
+
