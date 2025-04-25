@@ -7,6 +7,7 @@ editor: visual
 
 ```{r}
 library(tidyverse)
+library(readxl)
 library(ggiraph)
 library(scales)
 library(broom)
@@ -15,8 +16,7 @@ library(mosaic) #for easy histograms, boxplots,and t-tests etc
 library(car)
 library(stats)
 
-#all_vars <- read_xlsx("HNRS_data.xlsx")
-
+full_v1 <- read_xlsx("../data/timeseries.xlsx")
 pc_era_1 <- read_xlsx("../data/era1_pc.xlsx")
 pc_era_2 <- read_xlsx("../data/era2_pc.xlsx")
 ```
