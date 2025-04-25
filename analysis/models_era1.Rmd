@@ -20,7 +20,7 @@ library(stats)
 library(ggplot2)
 library(GGally)
 library(leaps)
-
+library(MASS)
 ```
 
 #ERA 1
@@ -59,6 +59,8 @@ pc_1 <- pc_1 %>%
 pc_1[sapply(pc_1, is.infinite)] <- NA
 
 ```
+
+
 
 #Tech Region Models
 
@@ -140,6 +142,7 @@ summary(vc.high.fit.1d)
 ```
 
 ###Firm death
+
 ```{r,warning=FALSE}
 fd.high.fit.1a <- lm(info_employment_pc~firm_death_pc, data=pc_1_high, na.rm=TRUE)
 summary(fd.high.fit.1a)
@@ -161,7 +164,6 @@ summary(fd.high.fit.1e)
 
 For states with a high amount of information sector employment, patents is the best predictor of information sector employment. Adding additional variables makes the model worse, however, the model is not incredibly strong to begin with (Adj. R-squared = .2747)
 
-
 ```{r}
 #look at all models?
 best.model.subset1 <- regsubsets(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc, data=pc_1_high, method="exhaustive")
@@ -170,7 +172,9 @@ head(all.models1)
 
 
 ```
+
 other options: patents, firm death, gdp
+
 ```{r, warning=FALSE}
 best.r2 <- lm(info_employment_pc~edu_investment_pc+firm_death_pc+vc_pc+patents_pc+bach_degrees_pc+gdp_pc, data=pc_1_high, na.rm=TRUE)
 summary(best.r2)
@@ -181,21 +185,23 @@ summary(best.r2)
 ```{r, warning=FALSE}
 ggpairs(pc_1_low_no, columns=c("edu_investment_pc", "vc_pc", "bach_degrees_pc", "gdp_pc", "patents_pc", "info_employment_pc"))
 ```
+
 idk if running models are worth it since there's nothign significant here other than gdp
 
 ###find best model
+
 ```{r, warning=FALSE}
 best.low.model.subset1 <- regsubsets(info_employment_pc~vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc, data=pc_1_low, method="exhaustive")
 all.low.models1 <- summary(best.low.model.subset1)
 head(all.low.models1)
 ```
 
-
 #All states
 
 ```{r, warning=FALSE}
 ggpairs(pc_1, columns=c("vc_pc", "patents_pc", "firm_death_pc", "edu_investment_pc", "gdp_pc", "info_employment_pc"))
 ```
+
 ```{r, warning=FALSE}
 pc_1_1 <- pc_1 %>% 
   slice(c(1:8, 10:12, 15:33, 35:39, 41:46, 48:51))
@@ -210,13 +216,8 @@ all.models <- summary(best.model.subset)
 head(all.models)
 ```
 
-###testing best adj r^2 models
-1: gdp_pc (0.365)
-2: firm_death_pc+gdp_pc (0.4645)
-3: patents_pc+firm_death_pc+gdp_pc (0.4878)
-4: patents_pc+firm_death_pc+bach_degrees_pc+gdp_pc (0.4886)
-5: patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc (0.4745)
-6: vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc (0.4577)
+###testing best adj r\^2 models 1: gdp_pc (0.365) 2: firm_death_pc+gdp_pc (0.4645) 3: patents_pc+firm_death_pc+gdp_pc (0.4878) 4: patents_pc+firm_death_pc+bach_degrees_pc+gdp_pc (0.4886) 5: patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc (0.4745) 6: vc_pc+patents_pc+firm_death_pc+bach_degrees_pc+edu_investment_pc+gdp_pc (0.4577)
+
 ```{r, warning=FALSE}
 best.fit.1 <- lm(info_employment_pc~gdp_pc, data=pc_1_1, na.rm=TRUE)
 summary(best.fit)
@@ -238,12 +239,13 @@ summary(best.fit.6)
 
 ```
 
-
 firm death with gdp is a very significant predictor with an adjusted r2 of 0.51. adding patents doesn't really affect significance, but adjusted r2 increases to 0.5353.
 
 ###ANOVA to test which model is the best
+
 ```{r, warning=FALSE}
 anova(best.fit.1, best.fit.2)
 summary(best.fit.2)
 ```
+
 The best model for predicting information sector employment growth is model 2: firm_death_pc and gdp_pc. For every one percent increase in firm death pc while holding gdp pc constant, information sector grew by 1.4 percent

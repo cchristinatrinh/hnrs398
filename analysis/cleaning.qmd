@@ -16,11 +16,15 @@ library(tidyverse)
 library(readxl)
 library(writexl)
 library(ggiraph)
+library(scales)
 
 net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "net_jobs")
+
 info_net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "info_net_jobs")
 employment <- read_excel("../data/all_variables_data.xlsx", sheet = "employment")
+info_employment <- read_excel("../data/all_variables_data.xlsx", sheet = "info_employment")
 firm_deaths <- read_excel("../data/all_variables_data.xlsx", sheet = "firm_deaths")
+
 
 patents <- read_excel("../data/all_variables_data.xlsx", sheet = "patents")
 venture_capital <- read_excel("../data/all_variables_data.xlsx", sheet = "venture_capital")
@@ -28,8 +32,7 @@ edu_investment <- read_excel("../data/all_variables_data.xlsx", sheet = "edu_inv
 bach_degrees <- read_excel("../data/all_variables_data.xlsx", sheet = "bach_degrees")
 
 gdp <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp")
-gdp_per_capita <- read_excel("../data/all_variables_data.xlsx", sheet = "gdp_per_capita")
-population <- read_excel("../data/all_variables_data.xlsx", sheet = "population")
+population <- read_excel("../data/all_variables_data.xlsx", sheet = "pop")
 
 ```
 
@@ -50,14 +53,14 @@ bach_degrees <- bach_degrees |>
 
 gdp <- gdp |>
   pivot_longer(cols = 2:29, values_to = "gdp", names_to = "year") |>
-  mutate(year = as.numeric(year))
+  mutate(year = as.numeric(year), gdp = gdp * 1000000)
 
-gdp_per_capita <- gdp_per_capita |>
-  pivot_longer(cols = 2:5, values_to = "gdp_per_capita", names_to = "year") |>
-  mutate(year = as.numeric(year))
+#gdp_per_capita <- gdp_per_capita |>
+ # pivot_longer(cols = 2:5, values_to = "gdp_per_capita", names_to = "year") |>
+  #mutate(year = as.numeric(year))
 
 population <- population |>
-  pivot_longer(cols = 2:5, values_to = "population", names_to = "year") |>
+  pivot_longer(cols = 2:26, values_to = "population", names_to = "year") |>
   mutate(year = as.numeric(year))
 ```
 
@@ -72,17 +75,19 @@ full_v1 <- venture_capital |>
   left_join(net_jobs, join_by(state, year)) |>
   left_join(edu_investment, join_by(state, year)) |>
   left_join(info_net_jobs, join_by(state, year)) |>
+  left_join(info_employment, join_by(state, year)) |>
   left_join(employment, join_by(state, year)) |>
   left_join(gdp, join_by(state, year)) |>
-  left_join(gdp_per_capita, join_by(state, year)) |>
-  left_join(population, join_by(state, year))
+ # left_join(gdp_per_capita, join_by(state, year)) |>
+  left_join(population, join_by(state, year)) |>
+  mutate(gdp_per_capita = gdp/population) |>
+  mutate(across(2:14, ~na_if(.x, 0)))
 ```
 
 ```{r}
 #dataset including all variables for only the endpoint years
 full_v2 <- full_v1 |>
   filter(year %in% c(1996,2001,2010,2015))
-
 
 era1 <- full_v1 |>
   filter(year %in% c(1996,2001))
@@ -127,9 +132,139 @@ write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
 
 ```
 
+```{r}
+pc_era_1 <- era1_wide |>
+  mutate(vc_pc=(venture_capital_2001-venture_capital_1996)/venture_capital_1996,
+         patents_pc=((patents_2001-patents_1996)/patents_1996),
+         firm_death_pc=((firm_deaths_2001-firm_deaths_1996)/firm_deaths_1996),
+         bach_degrees_pc=(bach_degrees_2001-bach_degrees_1996)/bach_degrees_1996,
+         net_jobs_pc=(net_jobs_2001-net_jobs_1996)/net_jobs_1996,
+         edu_investment_pc=(edu_investment_2001-edu_investment_1996)/edu_investment_1996,
+         info_net_jobs_pc=(info_net_jobs_2001-info_net_jobs_1996)/info_net_jobs_1996,
+         employment_pc=(employment_2001-employment_1996)/employment_1996,
+         gdp_pc=(gdp_2001-gdp_1996)/gdp_1996,
+         gdp_per_capita_pc=(gdp_per_capita_2001-gdp_per_capita_1996)/gdp_per_capita_1996,
+         population_pc=(population_2001-population_1996)/population_1996,
+         info_employment_pc=(info_employment_2001-info_employment_1996)/info_employment_1996) |>
+    mutate(across(2:14, ~na_if(.x, 0)))
+
+
+pc_era_1 <- pc_era_1 |>
+  mutate_all(~ifelse(is.nan(.), NA, .))
+pc_era_1[sapply(pc_era_1, is.infinite)] <- NA
+
+
+pc_era_2 <- era2_wide |> 
+  mutate(vc_pc=(venture_capital_2015-venture_capital_2010)/venture_capital_2010,
+         patents_pc=((patents_2015-patents_2010)/patents_2010),
+         firm_death_pc=((firm_deaths_2015-firm_deaths_2010)/firm_deaths_2010),
+         bach_degrees_pc=(bach_degrees_2015-bach_degrees_2010)/bach_degrees_2010,
+         net_jobs_pc=(net_jobs_2015-net_jobs_2010)/net_jobs_2010,
+         edu_investment_pc=(edu_investment_2015-edu_investment_2010)/edu_investment_2010,
+         info_net_jobs_pc=(info_net_jobs_2015-info_net_jobs_2010)/info_net_jobs_2010,
+         employment_pc=(employment_2015-employment_2010)/employment_2010,
+         gdp_pc=(gdp_2015-gdp_2010)/gdp_2010,
+         gdp_per_capita_pc=(gdp_per_capita_2015-gdp_per_capita_2010)/gdp_per_capita_2010,
+         population_pc=(population_2015-population_2010)/population_2010,
+         info_employment_pc=(info_employment_2015-info_employment_2010)/info_employment_2010) |>
+    mutate(across(2:14, ~na_if(.x, 0)))
+
+
+pc_era_2 <- pc_era_2 %>% 
+  mutate_all(~ifelse(is.nan(.), NA, .))
+pc_era_2[sapply(pc_era_2, is.infinite)] <- NA
+```
+
+```{r}
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc, data=pc_era_1))
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc, data=pc_era_1)) #best
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc, data=pc_era_1))
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+patents_pc, data=pc_era_1)) #best
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc+patents_pc, data=pc_era_1))
+```
+
+```{r}
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc, data=pc_era_2))
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc, data=pc_era_2)) #best
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc, data=pc_era_2))
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+patents_pc, data=pc_era_2)) #best
+
+summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc+patents_pc, data=pc_era_2))
+```
+
 # Plots
 
 ## Separate plots for each variable trend over time, with separate lines for every state
+
+```{r}
+df_america <- full_v1 %>%
+  filter(state == "U.S.") %>%
+  select(year, edu_investment, venture_capital)
+
+# Pivot to long format
+df_long <- df_america %>%
+  pivot_longer(cols = -year, names_to = "variable", values_to = "value")
+
+# Plot
+ggplot(df_long, aes(x = year, y = value, color = variable)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(
+    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
+    labels = c("edu_investment" = "Education Investment",
+               "venture_capital" = "Venture Capital")
+  ) +
+  labs(
+    title = "Education Investment vs Venture Capital in the U.S. (1996–2020)",
+    x = "Year",
+    y = "Billions of Dollars",
+    color = "Investment Type"
+  ) +
+  scale_y_continuous(
+    labels = label_number(scale = 1e-9, accuracy = 1))
+```
+
+```{r}
+df_summary <- full_v1 |>
+  filter(state != "U.S.") |>
+  group_by(state) |>
+  summarize(
+    edu_investment = mean(edu_investment, na.rm = TRUE),
+    venture_capital = mean(venture_capital, na.rm = TRUE)
+  )
+
+top_states <- df_summary %>%
+  slice_max(edu_investment, n = 5) %>%
+  pull(state)
+
+df_bar <- df_summary %>%
+  filter(state %in% top_states) %>%
+  pivot_longer(cols = c(edu_investment, venture_capital),
+               names_to = "variable",
+               values_to = "value")
+
+ggplot(df_bar, aes(x = reorder(state, -value), y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
+    labels = c("edu_investment" = "Education Investment",
+               "venture_capital" = "Venture Capital")
+  ) +
+  labs(
+    title = "Top States by Average Education Investment\nand Venture Capital (1996-2020)",
+    x = "State",
+    y = "Dollars in Millions",
+    fill = "Investment Type"
+  ) +
+  scale_y_continuous(
+    labels = label_number(scale = 1e-6, accuracy = 1))
+
+```
 
 ```{r}
 
