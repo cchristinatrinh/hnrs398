@@ -7,152 +7,236 @@ editor: visual
 
 ```{r}
 library(tidyverse)
-library(readxl)
-library(writexl)
 library(ggiraph)
+library(scales)
+library(broom)
+library(gt)
 library(mosaic) #for easy histograms, boxplots,and t-tests etc
 library(car)
 library(stats)
 
 #all_vars <- read_xlsx("HNRS_data.xlsx")
 
-era_1 <- read_xlsx("era1.xlsx")
-era_2 <- read_xlsx("era2.xlsx")
+pc_era_1 <- read_xlsx("../data/era1_pc.xlsx")
+pc_era_2 <- read_xlsx("../data/era2_pc.xlsx")
+```
+
+
+
+```{r}
+
+# Define your models for both eras
+models_era_1 <- list(
+  "Model 1" = lm(info_employment_pc ~ edu_investment_pc + vc_pc, data = pc_era_1),
+  "Model 2" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc, data = pc_era_1),
+  "Model 3" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + bach_degrees_pc, data = pc_era_1),
+  "Model 4" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + patents_pc, data = pc_era_1),
+  "Model 5" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + bach_degrees_pc + patents_pc, data = pc_era_1)
+)
+
+models_era_2 <- list(
+  "Model 1" = lm(info_employment_pc ~ edu_investment_pc + vc_pc, data = pc_era_2),
+  "Model 2" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc, data = pc_era_2),
+  "Model 3" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + bach_degrees_pc, data = pc_era_2),
+  "Model 4" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + patents_pc, data = pc_era_2),
+  "Model 5" = lm(info_employment_pc ~ edu_investment_pc + vc_pc + gdp_per_capita_pc + population_pc + firm_death_pc + bach_degrees_pc + patents_pc, data = pc_era_2)
+)
+```
+
+```{r}
+# Tidy each model and get adj R²
+tidy_models <- function(models, era_label) {
+  imap_dfr(models, function(model_obj, model_name) {
+    tidy_df <- tidy(model_obj) %>%
+      filter(term != "(Intercept)") %>%
+      mutate(
+        Era = era_label,
+        Model = model_name,
+        Predictor = term,
+        Estimate = round(estimate, 3),
+        `p-value` = round(p.value, 3),
+        Stars = case_when(
+          p.value < 0.001 ~ "***",
+          p.value < 0.01  ~ "**",
+          p.value < 0.05  ~ "*",
+          TRUE            ~ ""
+        ),
+        `Adjusted R²` = round(summary(model_obj)$adj.r.squared, 3)
+      )
+  })
+}
+
 ```
 
 ```{r}
 
-#net jobs vs 
-#look into gdp
+# Combine both eras
+model_summary <- bind_rows(
+  tidy_models(models_era_1, "Era 1"),
+  tidy_models(models_era_2, "Era 2")
+)
+
+# Add row_id for striping
+model_summary <- model_summary %>%
+  group_by(Era, Model) %>%
+  mutate(row_id = cur_group_id()) %>%
+  ungroup()
+
+# Flag rows for shading
+striped_models <- model_summary %>%
+  distinct(row_id, .keep_all = TRUE) %>%
+  mutate(stripe = row_number() %% 2 == 0) %>%
+  select(row_id, stripe)
+
+model_summary <- left_join(model_summary, striped_models, by = "row_id")
+
+# Final GT table
+model_summary %>%
+  select(Era, Model, Predictor, Estimate, `p-value`, Stars, `Adjusted R²`, stripe) %>%
+  gt(groupname_col = "Era") %>%
+  tab_header(title = "Linear Model Summary with Significance and Adjusted R²") %>%
+  cols_label(
+    Model = "Model",
+    Predictor = "Predictor",
+    Estimate = "Estimate",
+    `p-value` = "p-value",
+    Stars = "Significance",
+    `Adjusted R²` = "Adj. R²"
+  ) %>%
+  data_color(
+    columns = everything(),
+    rows = stripe == TRUE,
+    colors = scales::col_factor(
+      palette = c("white", "#f0f0f0"), domain = c(FALSE, TRUE)
+    )
+  ) %>%
+  cols_hide(columns = stripe) %>%
+  tab_options(
+    table.font.names = "Arial",
+    table.font.size = 11,
+    heading.title.font.size = 14,
+    row.striping.background_color = "#e6e6e6",
+    column_labels.font.weight = "bold",
+    data_row.padding = px(6),
+    table.border.top.style = "solid",
+    table.border.bottom.style = "solid",
+    column_labels.border.top.style = "solid",
+    column_labels.border.bottom.style = "solid"
+  )
+```
 
 
-#ERA 2
-pc_era_2 <- era_2 |>
-  mutate(vc_pc=(venture_capital_2015-venture_capital_2010)/venture_capital_2010,
-         patents_pc=((patents_2015-patents_2010)/patents_2010),
-         firm_death_pc=((firm_deaths_2015-firm_deaths_2010)/firm_deaths_2010),
-         bach_degrees_pc=(bach_degrees_2015-bach_degrees_2010)/bach_degrees_2010,
-         net_jobs_pc=(net_jobs_2015-net_jobs_2010)/net_jobs_2010,
-         edu_investment_pc=(edu_investment_2015-edu_investment_2010)/edu_investment_2010,
-         info_net_jobs_pc=(info_net_jobs_2015-info_net_jobs_2010)/info_net_jobs_2010,
-         employment_pc=(employment_2015-employment_2010)/employment_2010,
-         gdp_pc=(gdp_2015-gdp_2010)/gdp_2010,
-         gdp_per_capita_pc=(gdp_per_capita_2015-gdp_per_capita_2010)/gdp_per_capita_2010,
-         population_pc=(population_2015-population_2010)/population_2010)
+# Plots
 
-pc_era_2 <- pc_era_2 |> 
-  mutate_all(~ifelse(is.nan(.), NA, .))
-pc_era_2[sapply(pc_era_2, is.infinite)] <- NA
+```{r}
+df_america <- full_v1 %>%
+  filter(state == "U.S.") %>%
+  select(year, edu_investment, venture_capital)
+
+# Pivot to long format
+df_long <- df_america %>%
+  pivot_longer(cols = -year, names_to = "variable", values_to = "value")
+
+# Plot
+ggplot(df_long, aes(x = year, y = value, color = variable)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(
+    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
+    labels = c("edu_investment" = "Education Investment",
+               "venture_capital" = "Venture Capital")
+  ) +
+  labs(
+    title = "Education Investment vs Venture Capital in the U.S. (1996–2020)",
+    x = "Year",
+    y = "Billions of Dollars",
+    color = "Investment Type"
+  ) +
+  scale_y_continuous(
+    labels = label_number(scale = 1e-9, accuracy = 1))
 ```
 
 ```{r}
-#main control is gdp growth
-#include vc and education investment in all models
+df_summary <- full_v1 |>
+  filter(state != "U.S.") |>
+  group_by(state) |>
+  summarize(
+    edu_investment = mean(edu_investment, na.rm = TRUE),
+    venture_capital = mean(venture_capital, na.rm = TRUE)
+  )
 
-#percent change: ((new value - original value) / original value) * 100
+top_states <- df_summary %>%
+  slice_max(edu_investment, n = 5) %>%
+  pull(state)
 
-pc_era_1 <- era_1 |> 
-  mutate(vc_pc=(venture_capital_2001-venture_capital_1996)/venture_capital_1996,
-         patents_pc=((patents_2001-patents_1996)/patents_1996),
-         firm_death_pc=((firm_deaths_2001-firm_deaths_1996)/firm_deaths_1996),
-         bach_degrees_pc=(bach_degrees_2001-bach_degrees_1996)/bach_degrees_1996,
-         net_jobs_pc=(net_jobs_2001-net_jobs_1996)/net_jobs_1996,
-         edu_investment_pc=(edu_investment_2001-edu_investment_1996)/edu_investment_1996,
-         info_net_jobs_pc=(info_net_jobs_2001-info_net_jobs_1996)/info_net_jobs_1996,
-         employment_pc=(employment_2001-employment_1996)/employment_1996,
-         gdp_pc=(gdp_2001-gdp_1996)/gdp_1996,
-         gdp_per_capita_pc=(gdp_per_capita_2001-gdp_per_capita_1996)/gdp_per_capita_1996,
-         population_pc=(population_2001-population_1996)/population_1996)
+df_bar <- df_summary %>%
+  filter(state %in% top_states) %>%
+  pivot_longer(cols = c(edu_investment, venture_capital),
+               names_to = "variable",
+               values_to = "value")
 
-pc_era_1 <- pc_era_1 |>
-  mutate_all(~ifelse(is.nan(.), NA, .))
-pc_era_1[sapply(pc_era_1, is.infinite)] <- NA
+ggplot(df_bar, aes(x = reorder(state, -value), y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
+    labels = c("edu_investment" = "Education Investment",
+               "venture_capital" = "Venture Capital")
+  ) +
+  labs(
+    title = "Top States by Average Yearly Education\nInvestment and Venture Capital (1996-2020)",
+    x = "State",
+    y = "Dollars in Billions",
+    fill = "Investment Type"
+  ) +
+  scale_y_continuous(
+    labels = label_number(scale = 1e-9, accuracy = 1))
 
+```
+
+## Separate plots for each variable trend over time, with separate lines for every state
+
+```{r}
+
+variables <- c("venture_capital", "patents", "firm_deaths", "bach_degrees",
+               "net_jobs", "edu_investment", "info_net_jobs", "employment",
+               "gdp", "gdp_per_capita", "population")
+
+df <- full_v1
 
 ```
 
 ```{r}
+suppressWarnings(for (v in variables) {
+  
+  # Check if the variable has only positive values (ignoring NAs)
+  has_positive_values <- all(df[[v]] >= 0, na.rm = TRUE)
+  
+  # Build the base plot
+  plot <- ggplot(df, aes(
+    x = year,
+    y = .data[[v]],  # Dynamically selecting the variable
+    color = state,
+    group = state,
+    tooltip = state,
+    data_id = state
+  )) +
+    geom_line_interactive(aes(group = state), linewidth = 0.7) + 
+    labs(title = paste(v, "Across states Over Time"),
+         x = "Year",
+         y = v) +
+    theme_minimal() +
+    theme(legend.position = "none")  # Fully removes legend
 
-era1_net_jobs <- lm(net_jobs_pc~vc_pc+gdp_pc+edu_investment_pc+bach_degrees_pc+patents_pc+firm_death_pc, data=pc_era_1, na.rm=TRUE)
+  # Conditionally apply log scale to the y-axis if the variable has only positive values
+  if (has_positive_values) {
+    plot <- plot + scale_y_log10()  # Apply log transformation only if all values are positive
+  }
+  
+  # Generate interactive plot
+  interactive_plot <- girafe(ggobj = plot, width_svg = 7, height_svg = 4)
 
-era1_info_net_jobs <- lm(info_net_jobs_pc~vc_pc+gdp_pc+edu_investment_pc+bach_degrees_pc+patents_pc, data=pc_era_1, na.rm=TRUE)
+  # Print the interactive plot (this will display each one)
+  print(interactive_plot)
+})
 
-era1_firm_death <- lm(firm_death_pc~vc_pc+gdp_pc+edu_investment_pc+bach_degrees_pc+patents_pc, data=pc_era_1, na.rm=TRUE)
-
-era1_employment <- lm(employment_pc~vc_pc+gdp_pc+edu_investment_pc+bach_degrees_pc+patents_pc, data=pc_era_1, na.rm=TRUE)
-
-```
-
-```{r}
-summary(era1_net_jobs)
-summary(era1_info_net_jobs)
-summary(era1_firm_death)
-summary(era1_employment)
-```
-
-```{r}
-pc_era_1_negative <- pc_era_1 |>
-  filter(info_net_jobs_pc < 0)
-
-summary(lm(info_net_jobs_pc~edu_investment_pc, 
-                    data  =pc_era_1_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
-                    data = pc_era_1_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_1_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_1_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
-                    data = pc_era_1_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
-                    data = pc_era_1_negative, na.rm=TRUE))
-
-```
-
-```{r}
-pc_era_2_negative <- pc_era_2 |>
-  filter(info_net_jobs_pc < 0)
-
-summary(lm(info_net_jobs_pc~edu_investment_pc, 
-                    data  =pc_era_2_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
-                    data = pc_era_2_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_2_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_2_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
-                    data = pc_era_2_negative, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
-                    data = pc_era_2_negative, na.rm=TRUE))
-```
-
-```{r}
-summary(lm(info_net_jobs_pc~edu_investment_pc, 
-                    data  =pc_era_1, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc, 
-                    data = pc_era_1, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_1, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc, 
-                    data = pc_era_1, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc, 
-                    data = pc_era_1, na.rm=TRUE))
-
-summary(lm(info_net_jobs_pc~edu_investment_pc+vc_pc+bach_degrees_pc+gdp_pc+patents_pc, 
-                    data = pc_era_1, na.rm=TRUE))
 ```

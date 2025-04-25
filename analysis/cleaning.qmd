@@ -15,8 +15,8 @@ editor: visual
 library(tidyverse)
 library(readxl)
 library(writexl)
-library(ggiraph)
-library(scales)
+
+
 
 net_jobs <- read_excel("../data/all_variables_data.xlsx", sheet = "net_jobs")
 
@@ -123,15 +123,6 @@ full_v3 <- full_v2 |>
 
 ```
 
-## Create Excel Spreadsheets
-
-```{r}
-write_xlsx(full_v2, path = "../data/full_sheet.xlsx")
-
-write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
-
-```
-
 ```{r}
 pc_era_1 <- era1_wide |>
   mutate(vc_pc=(venture_capital_2001-venture_capital_1996)/venture_capital_1996,
@@ -175,139 +166,13 @@ pc_era_2 <- pc_era_2 %>%
 pc_era_2[sapply(pc_era_2, is.infinite)] <- NA
 ```
 
-```{r}
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc, data=pc_era_1))
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc, data=pc_era_1)) #best
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc, data=pc_era_1))
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+patents_pc, data=pc_era_1)) #best
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc+patents_pc, data=pc_era_1))
-```
+## Create Excel Spreadsheets
 
 ```{r}
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc, data=pc_era_2))
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc, data=pc_era_2)) #best
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc, data=pc_era_2))
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+patents_pc, data=pc_era_2)) #best
-
-summary(lm(info_employment_pc~edu_investment_pc+vc_pc+gdp_per_capita_pc+population_pc+firm_death_pc+bach_degrees_pc+patents_pc, data=pc_era_2))
-```
-
-# Plots
-
-## Separate plots for each variable trend over time, with separate lines for every state
-
-```{r}
-df_america <- full_v1 %>%
-  filter(state == "U.S.") %>%
-  select(year, edu_investment, venture_capital)
-
-# Pivot to long format
-df_long <- df_america %>%
-  pivot_longer(cols = -year, names_to = "variable", values_to = "value")
-
-# Plot
-ggplot(df_long, aes(x = year, y = value, color = variable)) +
-  geom_line(size = 1.2) +
-  geom_point(size = 2) +
-  scale_color_manual(
-    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
-    labels = c("edu_investment" = "Education Investment",
-               "venture_capital" = "Venture Capital")
-  ) +
-  labs(
-    title = "Education Investment vs Venture Capital in the U.S. (1996–2020)",
-    x = "Year",
-    y = "Billions of Dollars",
-    color = "Investment Type"
-  ) +
-  scale_y_continuous(
-    labels = label_number(scale = 1e-9, accuracy = 1))
-```
-
-```{r}
-df_summary <- full_v1 |>
-  filter(state != "U.S.") |>
-  group_by(state) |>
-  summarize(
-    edu_investment = mean(edu_investment, na.rm = TRUE),
-    venture_capital = mean(venture_capital, na.rm = TRUE)
-  )
-
-top_states <- df_summary %>%
-  slice_max(edu_investment, n = 5) %>%
-  pull(state)
-
-df_bar <- df_summary %>%
-  filter(state %in% top_states) %>%
-  pivot_longer(cols = c(edu_investment, venture_capital),
-               names_to = "variable",
-               values_to = "value")
-
-ggplot(df_bar, aes(x = reorder(state, -value), y = value, fill = variable)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  scale_fill_manual(
-    values = c("edu_investment" = "springgreen3", "venture_capital" = "royalblue"),
-    labels = c("edu_investment" = "Education Investment",
-               "venture_capital" = "Venture Capital")
-  ) +
-  labs(
-    title = "Top States by Average Education Investment\nand Venture Capital (1996-2020)",
-    x = "State",
-    y = "Dollars in Millions",
-    fill = "Investment Type"
-  ) +
-  scale_y_continuous(
-    labels = label_number(scale = 1e-6, accuracy = 1))
-
-```
-
-```{r}
-
-variables <- c("venture_capital", "patents", "firm_deaths", "bach_degrees",
-               "net_jobs", "edu_investment", "info_net_jobs", "employment",
-               "gdp", "gdp_per_capita", "population")
-
-df <- full_v1
-
-```
-
-```{r}
-suppressWarnings(for (v in variables) {
-  
-  # Check if the variable has only positive values (ignoring NAs)
-  has_positive_values <- all(df[[v]] >= 0, na.rm = TRUE)
-  
-  # Build the base plot
-  plot <- ggplot(df, aes(
-    x = year,
-    y = .data[[v]],  # Dynamically selecting the variable
-    color = state,
-    group = state,
-    tooltip = state,
-    data_id = state
-  )) +
-    geom_line_interactive(aes(group = state), linewidth = 0.7) + 
-    labs(title = paste(v, "Across states Over Time"),
-         x = "Year",
-         y = v) +
-    theme_minimal() +
-    theme(legend.position = "none")  # Fully removes legend
-
-  # Conditionally apply log scale to the y-axis if the variable has only positive values
-  if (has_positive_values) {
-    plot <- plot + scale_y_log10()  # Apply log transformation only if all values are positive
-  }
-  
-  # Generate interactive plot
-  interactive_plot <- girafe(ggobj = plot, width_svg = 7, height_svg = 4)
-
-  # Print the interactive plot (this will display each one)
-  print(interactive_plot)
-})
+write_xlsx(full_v1, path = "../data/timeseries.xlsx")
+write_xlsx(full_v2, path = "../data/full_sheet.xlsx")
+write_xlsx(full_v3, path = "../data/final_sheet.xlsx")
+write_xlsx(pc_era_1, path = "../data/era1_pc.xlsx")
+write_xlsx(pc_era_2, path = "../data/era2_pc.xlsx")
 
 ```
