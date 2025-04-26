@@ -15,6 +15,8 @@ library(gt)
 library(mosaic) #for easy histograms, boxplots,and t-tests etc
 library(car)
 library(stats)
+library(psych)
+library(skimr)
 
 full_v1 <- read_xlsx("../data/timeseries.xlsx")
 pc_era_1 <- read_xlsx("../data/era1_pc.xlsx")
@@ -125,6 +127,23 @@ model_summary %>%
   )
 ```
 
+```{r}
+pc_era_1 <- pc_era_1 |>
+  select(state, edu_investment_pc, vc_pc, gdp_per_capita_pc, population_pc, firm_death_pc, bach_degrees_pc, patents_pc)
+
+pc_era_2 <- pc_era_2 |>
+  select(state, edu_investment_pc, vc_pc, gdp_per_capita_pc, population_pc, firm_death_pc, bach_degrees_pc, patents_pc)
+
+pc_era_1_stats <- describe(pc_era_1 %>% select(-state))  # Remove 'state' first
+pc_era_1_stats_selected <- pc_era_1_stats[, c("n", "mean", "median", "sd", "min", "max")]
+pc_era_1_stats_selected
+
+pc_era_2_stats <- describe(pc_era_1 %>% select(-state))  # Remove 'state' first
+pc_era_2_stats_selected <- pc_era_1_stats[, c("n", "mean", "median", "sd", "min", "max")]
+pc_era_2_stats_selected
+
+```
+
 
 # Plots
 
@@ -149,11 +168,12 @@ ggplot(df_long, aes(x = year, y = value, color = variable)) +
   labs(
     title = "Education Investment vs Venture Capital in the U.S. (1996–2020)",
     x = "Year",
-    y = "Billions of Dollars",
+    y = "Dollars in Billions",
     color = "Investment Type"
   ) +
   scale_y_continuous(
-    labels = label_number(scale = 1e-9, accuracy = 1))
+    labels = label_number(scale = 1e-9, accuracy = 1)) + 
+  theme(legend.position="bottom")
 ```
 
 ```{r}
@@ -189,7 +209,8 @@ ggplot(df_bar, aes(x = reorder(state, -value), y = value, fill = variable)) +
     fill = "Investment Type"
   ) +
   scale_y_continuous(
-    labels = label_number(scale = 1e-9, accuracy = 1))
+    labels = label_number(scale = 1e-9, accuracy = 1)) + 
+  theme(legend.position="bottom")
 
 ```
 
